@@ -1,0 +1,13 @@
+[project]
+name = "nnfont"
+version = "0.0"
+description = "UMBC CSMC 678 Spring 2026 Project"
+dependencies = [ "torch",
+                 "freetype-py" ]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["nnfont*"]
