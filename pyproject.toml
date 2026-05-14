@@ -2,7 +2,8 @@
 name = "nnfont"
 version = "0.0"
 description = "UMBC CSMC 678 Spring 2026 Project"
-dependencies = [ "torch",
+dependencies = [ "numpy",
+                 "torch",
                  "freetype-py" ]
 
 [build-system]
