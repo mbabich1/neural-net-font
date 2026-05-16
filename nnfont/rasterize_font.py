@@ -2,6 +2,8 @@
 Loads the data into a tensor for processing.
 
 The main entry point is load_words_as_tensor
+
+The function flatten_words can flatten that tensor's word data to 1D
 """
 
 from math import log, ceil
@@ -195,6 +197,10 @@ def load_words_as_tensor(font_path = 'fonts/NotoSans-Regular.ttf', size = 8):
     fill_array(array, words, face, size)
     return array
 
+def flatten_words(words):
+    "Flatten the words from 2D to 1D, flattening the tensor from 3D to 2D."
+    return torch.reshape(words, (words.shape[0], words.shape[1] * words.shape[2]))
+
 # Turns a glyph into an array that can be turned into a tensor for
 # pytorch... when not called directly, this serves as a model for how
 # to use the API.
@@ -203,6 +209,7 @@ def main():
     data = load_words_as_tensor()
     # Print the middle word's array data
     print_font_data(data[data.shape[0] // 2])
+    print(flatten_words(data).shape)
 
 if __name__ == "__main__":
     main()
