@@ -1,3 +1,5 @@
+import re
+
 import freetype
 import torch
 from torch import tensor
@@ -55,8 +57,8 @@ def render_text(data, text, face, top):
         width = glyph.bitmap.width
         height = glyph.bitmap.rows
         glyph_tensor = tensor(glyph.bitmap.buffer, dtype=torch.uint8).reshape(height, width)
-        # Write over the data from the (x + left, y) corner to the (x
-        # + left + width, y + height) corner with the glyph tensor.
+        # Write over the data from the (x + left, y) corner to the
+        # (x + left + width, y + height) corner with the glyph tensor.
         data[y : y + height, x + left : x + left + width] += glyph_tensor
         x += advance_x(glyph)
         previous_char = char
@@ -68,18 +70,44 @@ def print_font_data(data):
             print('{:4d}'.format(int(data[i][j])), end='')
         print()
 
-# Turns a glyph into an array that can be turned into a tensor for
-# pytorch
-def main():
-    text = "Hello, world!"
-    # TODO: include the two fonts with the repo so it works on any distro/OS?
-    font_path = '/usr/share/fonts/google-noto/NotoSans-Regular.ttf'
-    size = 12
-    face = load_face(font_path, size)
+def split_text(text):
+    "Add a line break in the middle of a sentence."
+    mid = len(text) // 2
+    # Split on the nearest whitespace to the right of mid
+    split1 = re.split(r'(\s+)', text[mid:], maxsplit=1)
+    l1 = text[:mid] + split1[0]
+    r1 = split1[2]
+    # Split on the nearest whitespace to the left of mid
+    split2 = re.split(r'(\s+)', text[:mid][::-1], maxsplit=1)
+    l2 = split2[2][::-1]
+    r2 = split2[0][::-1] + text[mid:]
+    # Prefer whichever split is closer to the middle
+    if abs(len(l1) - len(r1)) <= abs(len(l2) - len(r2)):
+        return (l1, r1)
+    return (l2, r2)
+
+def create_text_data(text, face, size):
+    "Creates a tensor that fits the text, face, and size."
     top, height, width = determine_text_dimensions(text, face, size)
+    print(width)
     data = torch.zeros((height, width), dtype=torch.uint8)
     render_text(data, text, face, top)
     print_font_data(data)
+
+# Turns a glyph into an array that can be turned into a tensor for
+# pytorch
+def main():
+    text = "The quick brown fox jumps over the lazy dog."
+    texts = split_text(text)
+    # TODO: fixme... why does it work on the text, but not on either
+    # of the split texts?
+    print(texts)
+    # TODO: include the two fonts with the repo so it works on any distro/OS?
+    # TODO: also serif
+    font_path = '/usr/share/fonts/google-noto/NotoSans-Regular.ttf'
+    size = 12
+    face = load_face(font_path, size)
+    create_text_data(text, face, size)
 
 if __name__ == "__main__":
     main()
