@@ -119,13 +119,12 @@ def split_text(text):
 def create_one_line_text_data(text, face, size):
     "Creates a tensor that fits one line of text."
     top, height, width = determine_text_dimensions(text, face, size)
+    # TODO: pass in the big tensor instead? and make it one entry of it?
     data = torch.zeros((height, width), dtype=torch.uint8)
     render_text(data, text, face, top)
     return data
 
 # This is the main API function of this file right now.
-#
-# TODO: pad them all out to the same dimensions?
 def create_multiline_text_data(text, face, size):
     "Creates a tensor that fits the multiline text."
     texts = split_text(text)
@@ -160,11 +159,16 @@ def main():
     # text = "The quick brown fox jumps over the lazy dog."
     x_max = -1
     y_max = -1
+    # Determines the size of the whole data
     for text in words[:len(words)]:
-        shape = create_text_data(text, face, size).shape
+        top, height, width = determine_text_dimensions(text, face, size)
+        shape = (height, width)
+        # shape = create_text_data(text, face, size).shape
         x_max = max(shape[1], x_max)
         y_max = max(shape[0], y_max)
-    print(x_max, y_max)
+    # round x_max and y_max up to the nearest power of 2?
+    # 370100 13 179
+    print(len(words), y_max, x_max)
 
 if __name__ == "__main__":
     main()
