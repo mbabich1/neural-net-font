@@ -180,8 +180,6 @@ def fill_array(array, data, face, size):
         create_one_line_text_data(text, face, size, array = array, i = i)
     return array
 
-# Note: The caches have to be cleared if the font changes. Maybe clear
-# the caches here and consider it enough of a caching win.
 def load_words_as_tensor(font_path = 'fonts/NotoSans-Regular.ttf', size = 8):
     "Rasterizes all of the word data set with the given font and font size."
     # Reset the global cache dicts
