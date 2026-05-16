@@ -1,3 +1,4 @@
+from math import log, ceil
 import re
 
 import freetype
@@ -72,7 +73,8 @@ def determine_text_dimensions(text, face, size):
     # errors at the end of the text.
     return top, (top - bottom), width + 1
 
-def render_text(data, text, face, top):
+# TODO: center the text?
+def render_text(data, text, face, top, i = None):
     "Draw each glyph of the text on top of an empty data tensor."
     x = 0
     glyph = face.glyph
@@ -89,7 +91,10 @@ def render_text(data, text, face, top):
             x += abs(left)
         # Write over the data from the (x + left, y) corner to the
         # (x + left + width, y + height) corner with the glyph tensor.
-        data[y : y + height, x + left : x + left + width] += glyph_tensor
+        if i is None:
+            data[y : y + height, x + left : x + left + width] += glyph_tensor
+        else:
+            data[i, y : y + height, x + left : x + left + width] += glyph_tensor
         x += adv_x
         previous_char = char
 
@@ -116,12 +121,15 @@ def split_text(text):
         return (l1, r1)
     return (l2, r2)
 
-def create_one_line_text_data(text, face, size):
+def create_one_line_text_data(text, face, size, array = None, i = None):
     "Creates a tensor that fits one line of text."
     top, height, width = determine_text_dimensions(text, face, size)
     # TODO: pass in the big tensor instead? and make it one entry of it?
-    data = torch.zeros((height, width), dtype=torch.uint8)
-    render_text(data, text, face, top)
+    if tensor is None:
+        data = torch.zeros((height, width), dtype=torch.uint8)
+    else:
+        data = array
+    render_text(data, text, face, top, i = i)
     return data
 
 # This is the main API function of this file right now.
@@ -141,11 +149,11 @@ def create_multiline_text_data(text, face, size):
     data[y_start : y_start + b.shape[0], 0 : b.shape[1]] += b
     return data
 
-def create_text_data(text, face, size):
+def create_text_data(text, face, size, array = None, i = None):
     "Creates a tensor that fits the text, face, and size."
     if len(text) >= 20 and re.search(r'(\s+)', text):
         return create_multiline_text_data(text, face, size)
-    return create_one_line_text_data(text, face, size)
+    return create_one_line_text_data(text, face, size, array = array, i = i)
 
 # Turns a glyph into an array that can be turned into a tensor for
 # pytorch... when not called directly, this serves as a model for how
@@ -153,10 +161,9 @@ def create_text_data(text, face, size):
 def main():
     # Note: The caches have to be cleared if the font changes.
     font_path = 'fonts/NotoSans-Regular.ttf'
-    size = 12
+    size = 8
     face = load_face(font_path, size)
     words = process_words_dataset()['word']
-    # text = "The quick brown fox jumps over the lazy dog."
     x_max = -1
     y_max = -1
     # Determines the size of the whole data
@@ -168,7 +175,12 @@ def main():
         y_max = max(shape[0], y_max)
     # round x_max and y_max up to the nearest power of 2?
     # 370100 13 179
+    x_max = 2 ** ceil(log(x_max, 2))
+    y_max = 2 ** ceil(log(y_max, 2))
     print(len(words), y_max, x_max)
+    text = "word"
+    array = torch.zeros((1, height, width), dtype=torch.uint8)
+    print_font_data(create_text_data(text, face, size, array = array, i = 0)[0])
 
 if __name__ == "__main__":
     main()
