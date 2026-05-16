@@ -1,3 +1,9 @@
+"""
+Loads the data into a tensor for processing.
+
+The main entry point is load_words_as_tensor
+"""
+
 from math import log, ceil
 import re
 
@@ -33,6 +39,7 @@ def advance_x(glyph):
     return glyph.advance.x >> 6
 
 def glyph_data(face, char):
+    "Memoize the glyph data into a cache because it's very repetitive."
     if char in CACHE:
         return CACHE[char]
     face.load_char(char)
@@ -124,7 +131,6 @@ def split_text(text):
 def create_one_line_text_data(text, face, size, array = None, i = None):
     "Creates a tensor that fits one line of text."
     top, height, width = determine_text_dimensions(text, face, size)
-    # TODO: pass in the big tensor instead? and make it one entry of it?
     if tensor is None:
         data = torch.zeros((height, width), dtype=torch.uint8)
     else:
@@ -179,9 +185,9 @@ def fill_array(array, data, face, size):
 def load_words_as_tensor(font_path = 'fonts/NotoSans-Regular.ttf', size = 8):
     "Rasterizes all of the word data set with the given font and font size."
     # Reset the global cache dicts
-    CACHE = {}
-    GLYPH_TENSORS = {}
-    KERNING_CACHE = {}
+    CACHE.clear()
+    GLYPH_TENSORS.clear()
+    KERNING_CACHE.clear()
     # Load the data
     face = load_face(font_path, size)
     words = process_words_dataset()['word']
@@ -195,6 +201,7 @@ def load_words_as_tensor(font_path = 'fonts/NotoSans-Regular.ttf', size = 8):
 # pytorch... when not called directly, this serves as a model for how
 # to use the API.
 def main():
+    "Test print one of the items when called directly."
     data = load_words_as_tensor()
     # Print the middle word's array data
     print_font_data(data[data.shape[0] // 2])
