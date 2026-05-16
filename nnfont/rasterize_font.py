@@ -1,8 +1,11 @@
 import re
 
 import freetype
+import pandas as pd
 import torch
 from torch import tensor
+
+from nnfont.data import process_words_dataset
 
 def load_face(path, size):
     "Loads the requested face at the requested size."
@@ -127,13 +130,15 @@ def create_multiline_text_data(text, face, size):
 # pytorch... when not called directly, this serves as a model for how
 # to use the API.
 def main():
-    # TODO: include the two fonts with the repo so it works on any distro/OS?
-    # TODO: also serif
-    font_path = '/usr/share/fonts/google-noto/NotoSans-Regular.ttf'
+    font_path = 'fonts/NotoSans-Regular.ttf'
     size = 12
     face = load_face(font_path, size)
     text = "The quick brown fox jumps over the lazy dog."
-    data = create_multiline_text_data(text, face, size)
+    # text = process_words_dataset()[0]
+    if len(text) >= 20 and re.search(r'(\s+)', text):
+        data = create_multiline_text_data(text, face, size)
+    else:
+        data = create_text_data(text, face,size)
     print_font_data(data)
 
 if __name__ == "__main__":
