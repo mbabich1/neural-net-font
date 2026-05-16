@@ -8,6 +8,7 @@ from nnfont.data import process_words_dataset
 
 CACHE = {}
 GLYPH_TENSORS = {}
+KERNING_CACHE = {}
 
 def load_face(path, size):
     "Loads the requested face at the requested size."
@@ -18,7 +19,12 @@ def load_face(path, size):
 def kerning_value(face, previous_char, char):
     "Turns the face kerning into the kerning value."
     if previous_char:
-        return face.get_kerning(previous_char, char).x >> 6
+        pair = previous_char + char
+        if pair in KERNING_CACHE:
+            return KERNING_CACHE[pair]
+        kerning = face.get_kerning(previous_char, char).x >> 6
+        KERNING_CACHE[pair] = kerning
+        return kerning
     return 0
 
 def advance_x(glyph):
@@ -153,7 +159,7 @@ def main():
     # text = "The quick brown fox jumps over the lazy dog."
     maximum = -1
     for text in words[:len(words)]:
-        maximum = max(create_text_data(text, face, size).shape[1], maximum)
+       maximum = max(create_text_data(text, face, size).shape[1], maximum)
     print(maximum) # 179
 
 if __name__ == "__main__":
