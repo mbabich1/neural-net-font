@@ -25,6 +25,6 @@ def get_sentences_dataset():
     return path + '/wikisent2.txt'
 
 def process_words_dataset():
-    return pd.read_csv(get_words_dataset())['word']
+    return pd.read_csv(get_words_dataset())
 
 # print(process_words_dataset()[0])

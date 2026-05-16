@@ -1,7 +1,6 @@
 import re
 
 import freetype
-import pandas as pd
 import torch
 from torch import tensor
 
@@ -98,8 +97,8 @@ def split_text(text):
         return (l1, r1)
     return (l2, r2)
 
-def create_text_data(text, face, size):
-    "Creates a tensor that fits the text, face, and size."
+def create_one_line_text_data(text, face, size):
+    "Creates a tensor that fits one line of text."
     top, height, width = determine_text_dimensions(text, face, size)
     data = torch.zeros((height, width), dtype=torch.uint8)
     render_text(data, text, face, top)
@@ -111,10 +110,8 @@ def create_text_data(text, face, size):
 def create_multiline_text_data(text, face, size):
     "Creates a tensor that fits the multiline text."
     texts = split_text(text)
-    # The quick brown fox
-    a = create_text_data(texts[0], face, size)
-    # jumps over the lazy dog.
-    b = create_text_data(texts[1], face, size)
+    a = create_one_line_text_data(texts[0], face, size)
+    b = create_one_line_text_data(texts[1], face, size)
     # The break between the line
     y_offset = size // 6
     data = torch.zeros((a.shape[0] + b.shape[0] + y_offset,
@@ -126,6 +123,12 @@ def create_multiline_text_data(text, face, size):
     data[y_start : y_start + b.shape[0], 0 : b.shape[1]] += b
     return data
 
+def create_text_data(text, face, size):
+    "Creates a tensor that fits the text, face, and size."
+    if len(text) >= 20 and re.search(r'(\s+)', text):
+        return create_multiline_text_data(text, face, size)
+    return create_one_line_text_data(text, face, size)
+
 # Turns a glyph into an array that can be turned into a tensor for
 # pytorch... when not called directly, this serves as a model for how
 # to use the API.
@@ -133,13 +136,15 @@ def main():
     font_path = 'fonts/NotoSans-Regular.ttf'
     size = 12
     face = load_face(font_path, size)
-    text = "The quick brown fox jumps over the lazy dog."
-    # text = process_words_dataset()[0]
-    if len(text) >= 20 and re.search(r'(\s+)', text):
-        data = create_multiline_text_data(text, face, size)
-    else:
-        data = create_text_data(text, face,size)
-    print_font_data(data)
+    words = process_words_dataset()['word']
+    words = words[:len(words)]
+    # text = "The quick brown fox jumps over the lazy dog."
+    # text = words[len(words) // 2]
+    maximum = -1
+    for text in words:
+        maximum = max(create_text_data(text, face, size).shape[1], maximum)
+    print(maximum) # 179; takes a few minutes to run
+    # print_font_data(data)
 
 if __name__ == "__main__":
     main()
