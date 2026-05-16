@@ -98,28 +98,43 @@ def split_text(text):
 def create_text_data(text, face, size):
     "Creates a tensor that fits the text, face, and size."
     top, height, width = determine_text_dimensions(text, face, size)
-    print(width)
     data = torch.zeros((height, width), dtype=torch.uint8)
     render_text(data, text, face, top)
-    print_font_data(data)
+    return data
+
+# This is the main API function of this file right now.
+#
+# TODO: pad them all out to the same dimensions?
+def create_multiline_text_data(text, face, size):
+    "Creates a tensor that fits the multiline text."
+    texts = split_text(text)
+    # The quick brown fox
+    a = create_text_data(texts[0], face, size)
+    # jumps over the lazy dog.
+    b = create_text_data(texts[1], face, size)
+    # The break between the line
+    y_offset = size // 6
+    data = torch.zeros((a.shape[0] + b.shape[0] + y_offset,
+                        max(a.shape[1], b.shape[1])),
+                       dtype=torch.uint8)
+    y_start = 0
+    data[y_start : y_start + a.shape[0], 0 : a.shape[1]] += a
+    y_start += a.shape[0] + y_offset
+    data[y_start : y_start + b.shape[0], 0 : b.shape[1]] += b
+    return data
 
 # Turns a glyph into an array that can be turned into a tensor for
-# pytorch
+# pytorch... when not called directly, this serves as a model for how
+# to use the API.
 def main():
-    text = "The quick brown fox jumps over the lazy dog."
-    texts = split_text(text)
-    # TODO: fixme... why does it work on the text, but not on either
-    # of the split texts?
-    print(texts)
     # TODO: include the two fonts with the repo so it works on any distro/OS?
     # TODO: also serif
     font_path = '/usr/share/fonts/google-noto/NotoSans-Regular.ttf'
     size = 12
     face = load_face(font_path, size)
-    # The quick brown fox
-    create_text_data(texts[0], face, size)
-    # jumps over the lazy dog.
-    create_text_data(texts[1], face, size)
+    text = "The quick brown fox jumps over the lazy dog."
+    data = create_multiline_text_data(text, face, size)
+    print_font_data(data)
 
 if __name__ == "__main__":
     main()
