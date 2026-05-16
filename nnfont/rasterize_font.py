@@ -6,6 +6,9 @@ from torch import tensor
 
 from nnfont.data import process_words_dataset
 
+CACHE = {}
+GLYPH_TENSORS = {}
+
 def load_face(path, size):
     "Loads the requested face at the requested size."
     face = freetype.Face(path)
@@ -22,6 +25,21 @@ def advance_x(glyph):
     "Advances the x coordinate of the glyph."
     return glyph.advance.x >> 6
 
+def glyph_data(face, char):
+    if char in CACHE:
+        return CACHE[char]
+    face.load_char(char)
+    glyph = face.glyph
+    top = glyph.bitmap_top
+    height = glyph.bitmap.rows
+    width = glyph.bitmap.width
+    left = glyph.bitmap_left
+    adv_x = advance_x(glyph)
+    result = (top, height, width, left, adv_x)
+    CACHE[char] = result
+    GLYPH_TENSORS[char] = tensor(glyph.bitmap.buffer, dtype=torch.uint8).reshape(height, width)
+    return result
+
 def determine_text_dimensions(text, face, size):
     """
     Calculate the size of the smallest 2D tensor that contains the
@@ -30,21 +48,19 @@ def determine_text_dimensions(text, face, size):
     top = -size
     bottom = size
     width = 0
-    glyph = face.glyph
     previous_char = None
     # Walk through each character. If the top is larger or the bottom
     # is smaller than the old top or bottom, then update that to
     # reflect the new dimensions. Then advance the width by the
     # specified x advancement adjusted by the kerning value.
     for char in text:
-        face.load_char(char)
-        top = max(top, glyph.bitmap_top)
-        bottom = min(bottom, glyph.bitmap_top - glyph.bitmap.rows)
-        left = glyph.bitmap_left
+        glyph_top, glyph_height, glyph_width, left, adv_x = glyph_data(face, char)
+        top = max(top, glyph_top)
+        bottom = min(bottom, glyph_top - glyph_height)
         # The first character can start negative, e.g. "j"
         if left < 0 and width == 0:
             width += abs(left)
-        width += advance_x(glyph) + kerning_value(face, previous_char, char)
+        width += adv_x + kerning_value(face, previous_char, char)
         previous_char = char
     # Note: Adding a padding of one to the width can fix off-by-one
     # errors at the end of the text.
@@ -58,20 +74,17 @@ def render_text(data, text, face, top):
     # Walk through each character. Write the glyph data on top of the
     # empty data tensor.
     for char in text:
-        face.load_char(char)
         x += kerning_value(face, previous_char, char)
-        y = top - glyph.bitmap_top
-        left = glyph.bitmap_left
-        width = glyph.bitmap.width
-        height = glyph.bitmap.rows
-        glyph_tensor = tensor(glyph.bitmap.buffer, dtype=torch.uint8).reshape(height, width)
+        glyph_top, height, width, left, adv_x = glyph_data(face, char)
+        y = top - glyph_top
+        glyph_tensor = GLYPH_TENSORS[char]
         # The first character can start negative, e.g. "j"
         if left < 0 and x == 0:
             x += abs(left)
         # Write over the data from the (x + left, y) corner to the
         # (x + left + width, y + height) corner with the glyph tensor.
         data[y : y + height, x + left : x + left + width] += glyph_tensor
-        x += advance_x(glyph)
+        x += adv_x
         previous_char = char
 
 def print_font_data(data):
@@ -137,14 +150,11 @@ def main():
     size = 12
     face = load_face(font_path, size)
     words = process_words_dataset()['word']
-    words = words[:len(words)]
     # text = "The quick brown fox jumps over the lazy dog."
-    # text = words[len(words) // 2]
     maximum = -1
-    for text in words:
+    for text in words[:len(words)]:
         maximum = max(create_text_data(text, face, size).shape[1], maximum)
-    print(maximum) # 179; takes a few minutes to run
-    # print_font_data(data)
+    print(maximum) # 179
 
 if __name__ == "__main__":
     main()
