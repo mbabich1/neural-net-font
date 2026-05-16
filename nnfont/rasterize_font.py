@@ -155,32 +155,49 @@ def create_text_data(text, face, size, array = None, i = None):
         return create_multiline_text_data(text, face, size)
     return create_one_line_text_data(text, face, size, array = array, i = i)
 
+def determine_array_size(data, face, size):
+    "Do a first pass through the data to find how big to make the tensor."
+    x_max = -1
+    y_max = -1
+    for text in data:
+        top, height, width = determine_text_dimensions(text, face, size)
+        shape = (height, width)
+        x_max = max(shape[1], x_max)
+        y_max = max(shape[0], y_max)
+    x_max = 2 ** ceil(log(x_max, 2))
+    y_max = 2 ** ceil(log(y_max, 2))
+    return len(data), y_max, x_max
+
+def fill_array(array, data, face, size):
+    "Fills the array with the rasterized data."
+    for i, text in enumerate(data):
+        create_one_line_text_data(text, face, size, array = array, i = i)
+    return array
+
+# Note: The caches have to be cleared if the font changes. Maybe clear
+# the caches here and consider it enough of a caching win.
+def load_words_as_tensor(font_path = 'fonts/NotoSans-Regular.ttf', size = 8):
+    "Rasterizes all of the word data set with the given font and font size."
+    # Reset the global cache dicts
+    CACHE = {}
+    GLYPH_TENSORS = {}
+    KERNING_CACHE = {}
+    # Load the data
+    face = load_face(font_path, size)
+    words = process_words_dataset()['word']
+    # Create and populate the tensor array.
+    array = torch.zeros(determine_array_size(words, face, size),
+                        dtype=torch.uint8)
+    fill_array(array, words, face, size)
+    return array
+
 # Turns a glyph into an array that can be turned into a tensor for
 # pytorch... when not called directly, this serves as a model for how
 # to use the API.
 def main():
-    # Note: The caches have to be cleared if the font changes.
-    font_path = 'fonts/NotoSans-Regular.ttf'
-    size = 8
-    face = load_face(font_path, size)
-    words = process_words_dataset()['word']
-    x_max = -1
-    y_max = -1
-    # Determines the size of the whole data
-    for text in words[:len(words)]:
-        top, height, width = determine_text_dimensions(text, face, size)
-        shape = (height, width)
-        # shape = create_text_data(text, face, size).shape
-        x_max = max(shape[1], x_max)
-        y_max = max(shape[0], y_max)
-    # round x_max and y_max up to the nearest power of 2?
-    # 370100 13 179
-    x_max = 2 ** ceil(log(x_max, 2))
-    y_max = 2 ** ceil(log(y_max, 2))
-    print(len(words), y_max, x_max)
-    text = "word"
-    array = torch.zeros((1, height, width), dtype=torch.uint8)
-    print_font_data(create_text_data(text, face, size, array = array, i = 0)[0])
+    data = load_words_as_tensor()
+    # Print the middle word's array data
+    print_font_data(data[data.shape[0] // 2])
 
 if __name__ == "__main__":
     main()
