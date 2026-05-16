@@ -152,15 +152,19 @@ def create_text_data(text, face, size):
 # pytorch... when not called directly, this serves as a model for how
 # to use the API.
 def main():
+    # Note: The caches have to be cleared if the font changes.
     font_path = 'fonts/NotoSans-Regular.ttf'
     size = 12
     face = load_face(font_path, size)
     words = process_words_dataset()['word']
     # text = "The quick brown fox jumps over the lazy dog."
-    maximum = -1
+    x_max = -1
+    y_max = -1
     for text in words[:len(words)]:
-       maximum = max(create_text_data(text, face, size).shape[1], maximum)
-    print(maximum) # 179
+        shape = create_text_data(text, face, size).shape
+        x_max = max(shape[1], x_max)
+        y_max = max(shape[0], y_max)
+    print(x_max, y_max)
 
 if __name__ == "__main__":
     main()
