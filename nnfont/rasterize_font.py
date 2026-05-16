@@ -38,9 +38,15 @@ def determine_text_dimensions(text, face, size):
         face.load_char(char)
         top = max(top, glyph.bitmap_top)
         bottom = min(bottom, glyph.bitmap_top - glyph.bitmap.rows)
+        left = glyph.bitmap_left
+        # The first character can start negative, e.g. "j"
+        if left < 0 and width == 0:
+            width += abs(left)
         width += advance_x(glyph) + kerning_value(face, previous_char, char)
         previous_char = char
-    return top, (top - bottom), width
+    # Note: Adding a padding of one to the width can fix off-by-one
+    # errors at the end of the text.
+    return top, (top - bottom), width + 1
 
 def render_text(data, text, face, top):
     "Draw each glyph of the text on top of an empty data tensor."
@@ -57,6 +63,9 @@ def render_text(data, text, face, top):
         width = glyph.bitmap.width
         height = glyph.bitmap.rows
         glyph_tensor = tensor(glyph.bitmap.buffer, dtype=torch.uint8).reshape(height, width)
+        # The first character can start negative, e.g. "j"
+        if left < 0 and x == 0:
+            x += abs(left)
         # Write over the data from the (x + left, y) corner to the
         # (x + left + width, y + height) corner with the glyph tensor.
         data[y : y + height, x + left : x + left + width] += glyph_tensor
@@ -107,7 +116,10 @@ def main():
     font_path = '/usr/share/fonts/google-noto/NotoSans-Regular.ttf'
     size = 12
     face = load_face(font_path, size)
-    create_text_data(text, face, size)
+    # The quick brown fox
+    create_text_data(texts[0], face, size)
+    # jumps over the lazy dog.
+    create_text_data(texts[1], face, size)
 
 if __name__ == "__main__":
     main()
