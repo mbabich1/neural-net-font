@@ -7,6 +7,7 @@ The function flatten_words can flatten that tensor's word data to 1D
 """
 
 from math import log, ceil
+import os
 import re
 
 import freetype
@@ -182,14 +183,15 @@ def fill_array(array, data, face, size):
         create_one_line_text_data(text, face, size, array = array, i = i)
     return array
 
-def load_words_as_tensor(font_path = 'nnfont/fonts/NotoSans-Regular.ttf', size = 8, n = None):
+def load_words_as_tensor(font_path = 'NotoSans-Regular.ttf', size = 8, n = None):
     "Rasterizes all of the word data set with the given font and font size."
     # Reset the global cache dicts
     CACHE.clear()
     GLYPH_TENSORS.clear()
     KERNING_CACHE.clear()
     # Load the data
-    face = load_face(font_path, size)
+    full_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'fonts', font_path)
+    face = load_face(full_path, size)
     words = process_words_dataset()['word']
     if n is not None:
         words = words[:n]
