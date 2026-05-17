@@ -8,64 +8,72 @@ DEVICE = "cuda"
 
 
 class Generator(nn.Module):
-    def __init__(self, output_dim) -> None:
+    def __init__(self, latent_size=100) -> None:
         super().__init__()
-        self.layers = nn.ModuleList(
-            [
-                nn.Linear(100, 256),
-                nn.Linear(256, 512),
-                nn.Linear(512, 1024),
-                nn.Linear(1024, output_dim),
-            ]
-        )
-        self.fns = nn.ModuleList(
-            [
-                nn.LeakyReLU(0.2),
-                nn.LeakyReLU(0.2),
-                nn.LeakyReLU(0.2),
-                nn.Tanh(),  # Swappable with whatever we choose for data normalization
-            ]
+        self.main = nn.Sequential(
+            nn.ConvTranspose2d(latent_size, 512, kernel_size=(1, 4), stride=1, padding=0, bias=False),
+            nn.BatchNorm2d(512),
+            nn.ReLU(True),
+            # 1x4 -> 2x8
+            nn.ConvTranspose2d(512, 256, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False),
+            nn.BatchNorm2d(256),
+            nn.ReLU(True),
+            # 2x8 -> 4x16
+            nn.ConvTranspose2d(256, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False),
+            nn.BatchNorm2d(128),
+            nn.ReLU(True),
+            # 4x16 -> 8x32
+            nn.ConvTranspose2d(128, 64, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False),
+            nn.BatchNorm2d(64),
+            nn.ReLU(True),
+            # 8x32 -> 16x256
+            nn.ConvTranspose2d(64, 1, kernel_size=(4, 10), stride=(2, 8), padding=(1, 1), bias=False),
+            nn.Tanh()
         )
 
     def forward(self, X):
-        z = X
-        for layer, fn in zip(self.layers, self.fns):
-            z = fn(layer(z))
-
-        return z
+        X = X.view(X.size(0), X.size(1), 1, 1)
+        return self.main(X)
 
 
 class Discriminator(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        self.layers = nn.ModuleList(
-            [
-                nn.Linear(4096, 1024),
-                nn.Linear(1024, 512),
-                nn.Linear(512, 256),
-                nn.Linear(256, 1),
-            ]
-        )
-        self.fns = nn.ModuleList(
-            [nn.LeakyReLU(0.2), nn.LeakyReLU(0.2), nn.LeakyReLU(0.2), nn.Identity()]
-        )
-        self.dropout = nn.ModuleList(
-            [nn.Dropout(0.3), nn.Dropout(0.3), nn.Dropout(0.3), nn.Identity()]
+        self.main = nn.Sequential(
+            # 1 x 16 x 256
+            nn.Conv2d(1, 64, kernel_size=(4, 10), stride=(2, 8), padding=(1, 1), bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+            # 64 x 8 x 32
+            nn.Conv2d(64, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(0.2, inplace=True),
+            # 128 x 4 x 16
+            nn.Conv2d(128, 256, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(0.2, inplace=True),
+            # 256 x 2 x 8
+            nn.Conv2d(256, 512, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False),
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU(0.2, inplace=True),
+            # 512 x 1 x 4 -> 1 x 1 x 1
+            nn.Conv2d(512, 1, kernel_size=(1, 4), stride=1, padding=0, bias=False)
         )
 
     def forward(self, X):
-        z = X
-        for layer, fn, dropout in zip(self.layers, self.fns, self.dropout):
-            z = dropout(fn(layer(z)))
-
-        return z
+        if len(X.shape) == 3:
+            X = X.unsqueeze(1)
+        elif len(X.shape) == 2:
+            X = X.view(-1, 1, 16, 256)
+        
+        return self.main(X).view(-1, 1)
     
 
 def prep_smp(smp_tensor: torch.Tensor) -> torch.Tensor:
     unnormalized = (smp_tensor + 1) / 2 # brings out of tanh to sigmoid range
     bytes = torch.clamp(unnormalized * 255, 0, 255).to(torch.uint8)
-    unflattened = unflatten_word(bytes, 256)
-    return unflattened
+    # unflattened = unflatten_word(bytes, 256)
+    bytes = bytes.squeeze().cpu()
+    return bytes
 
 
 def train(
@@ -88,16 +96,20 @@ def train(
         tl_dis_loss = 0
         fakes = None
         for batch_idx, (batch_images,) in enumerate(data_loader):
+            current_batch_size = batch_images.size(0)
+            real_targets = torch.full((current_batch_size, 1), 0.9, device=DEVICE)
+            fake_targets = torch.zeros((current_batch_size, 1), device=DEVICE)
+
             # real images with discriminator
             real_images = batch_images.to(DEVICE)
             outputs = discriminator(real_images)
-            dis_loss_real = BCELogitsLoss(outputs, (torch.ones(batch_size, 1) * 0.9).to(DEVICE))
+            dis_loss_real = BCELogitsLoss(outputs, real_targets)
 
             # fake images with generator
             z = torch.randn(batch_size, latent_size).to(DEVICE)
             fakes = generator(z)
             outputs = discriminator(fakes)
-            dis_loss_fake = BCELogitsLoss(outputs, torch.zeros(batch_size, 1).to(DEVICE))
+            dis_loss_fake = BCELogitsLoss(outputs, fake_targets)
 
             dis_loss = dis_loss_real + dis_loss_fake
             gen_optim.zero_grad()
@@ -110,7 +122,7 @@ def train(
             fakes = generator(z)
             outputs = discriminator(fakes)
 
-            gen_loss = BCELogitsLoss(outputs, torch.ones(batch_size, 1).to(DEVICE))
+            gen_loss = BCELogitsLoss(outputs, torch.ones_like(real_targets)) # ones_like, because we want a distinct tensor
             gen_optim.zero_grad()
             dis_optim.zero_grad()
             gen_loss.backward()
@@ -146,9 +158,11 @@ def normalize_tensor(tensor: torch.Tensor) -> torch.Tensor:
 
 def main():
     words_tensor = load_words_as_tensor(size=12)
+    if len(words_tensor.shape) == 3:
+        words_tensor = words_tensor.unsqueeze(1)
     print(type(words_tensor), words_tensor.shape)
-    words_tensor, len = flatten_words(words_tensor)
-    print(type(words_tensor), words_tensor.shape)
+    # words_tensor, len = flatten_words(words_tensor) # only for non-convolutional
+    # print(type(words_tensor), words_tensor.shape)
     print(words_tensor[0])
 
     # normalize data to be tanh compatible
@@ -158,7 +172,7 @@ def main():
         words_tensor
     )  # TODO: concat labels when doing label-based
 
-    generator = Generator(4096).to(DEVICE)  # a small starting size
+    generator = Generator(100).to(DEVICE)  # a small starting size
     discriminator = Discriminator().to(DEVICE)
 
     data_loader = torch.utils.data.DataLoader(
