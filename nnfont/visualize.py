@@ -23,10 +23,10 @@ def show_word_plot():
 def main():
     # Test of flatten and unflatten. If the size is wrong (e.g. 64
     # when x_size is 128), then it won't graph correctly.
-    words8, x_size = flatten_words(load_words_as_tensor(n = 2000))
+    words8, x_size = flatten_words(load_words_as_tensor(size = 8, n = 2000))
     words8 = unflatten_words(words8, x_size)
     # Test of two different sizes.
-    words12 = load_words_as_tensor(n = 2000, size=12)
+    words12 = load_words_as_tensor(n = 2000, size = 12)
     a = words8[1234]
     b = words12[1234]
     c = torch.zeros(b.shape, dtype=torch.uint8)
@@ -46,7 +46,7 @@ def main():
            'NotoSerif-BoldItalic.ttf',
            'NotoSerif-Bold.ttf',
            'NotoSerif-Italic.ttf']
-    all_words = [load_words_as_tensor(n = 200, size=12, font_path=font)
+    all_words = [load_words_as_tensor(n = 200, size = 12, font_path = font)
                  for font in ttf]
     selected_word = [data[50] for data in all_words]
     fonts_word = torch.stack(selected_word)
