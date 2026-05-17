@@ -1,6 +1,7 @@
 import torch
 from torch import nn, tensor
 from rasterize_font import load_words_as_tensor, flatten_words, unflatten_word
+from cache_file import cache_after_first_run
 from visualize import plot_word
 import random
 
@@ -145,7 +146,7 @@ def normalize_tensor(tensor: torch.Tensor) -> torch.Tensor:
 
 
 def main():
-    words_tensor = load_words_as_tensor(size=12)
+    words_tensor = cache_after_first_run(lambda : load_words_as_tensor(size=12), 'words12')
     print(type(words_tensor), words_tensor.shape)
     words_tensor, len = flatten_words(words_tensor)
     print(type(words_tensor), words_tensor.shape)
