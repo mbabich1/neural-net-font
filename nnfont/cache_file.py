@@ -3,7 +3,10 @@ Caches expensive Pytorch tensors to files.
 
 Use the higher order function cache_after_first_run
 
-e.g. cache_after_first_run(load_words_as_tensor, 'words')
+Example usage:
+
+cache_after_first_run(load_words_as_tensor, 'words')
+cache_after_first_run(lambda : load_words_as_tensor(size=12), 'words12')
 """
 
 import os
