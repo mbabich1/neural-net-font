@@ -9,7 +9,11 @@ def plot_word(words, word_id):
     plt.show()
 
 def main():
-    plot_word(rasterize_font.load_words_as_tensor(n = 2000), 1234)
+    # Test of flatten and unflatten. If the size is wrong (e.g. 64
+    # when x_size is 128), then it won't graph correctly.
+    words, x_size = rasterize_font.flatten_words(rasterize_font.load_words_as_tensor(n = 2000))
+    words = rasterize_font.unflatten_words(words, x_size)
+    plot_word(words, 1234)
 
 if __name__ == "__main__":
     main()

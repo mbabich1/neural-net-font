@@ -201,7 +201,11 @@ def load_words_as_tensor(font_path = 'fonts/NotoSans-Regular.ttf', size = 8, n =
 
 def flatten_words(words):
     "Flatten the words from 2D to 1D, flattening the tensor from 3D to 2D."
-    return torch.reshape(words, (words.shape[0], words.shape[1] * words.shape[2]))
+    return torch.reshape(words, (words.shape[0], words.shape[1] * words.shape[2])), words.shape[2]
+
+def unflatten_words(words, row_size):
+    "Unflatten the words from 1D to 2D, unflattening the tensor from 2D to 3D."
+    return torch.reshape(words, (words.shape[0], words.shape[1] // row_size, row_size))
 
 # Turns a glyph into an array that can be turned into a tensor for
 # pytorch... when not called directly, this serves as a model for how
