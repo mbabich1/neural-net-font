@@ -183,7 +183,7 @@ def fill_array(array, data, face, size):
         create_one_line_text_data(text, face, size, array = array, i = i)
     return array
 
-def load_words_as_tensor(font_path = 'NotoSans-Regular.ttf', size = 8, n = None):
+def load_words_as_tensor(font_path = 'NotoSans-Regular.ttf', size = 12, n = None):
     "Rasterizes all of the word data set with the given font and font size."
     # Reset the global cache dicts
     CACHE.clear()
@@ -200,6 +200,40 @@ def load_words_as_tensor(font_path = 'NotoSans-Regular.ttf', size = 8, n = None)
                         dtype=torch.uint8)
     fill_array(array, words, face, size)
     return array
+
+def load_all_fonts(size = 12):
+    "Loads and rasterizes all fonts."
+    # All font paths, as files in 'fonts/'
+    ttf = ['NotoSans-Regular.ttf',
+           'NotoSans-BoldItalic.ttf',
+           'NotoSans-Bold.ttf',
+           'NotoSans-Italic.ttf',
+           'NotoSerif-Regular.ttf',
+           'NotoSerif-BoldItalic.ttf',
+           'NotoSerif-Bold.ttf',
+           'NotoSerif-Italic.ttf']
+    # 1 or 0 for: serif? bold? italic?
+    traits = tensor([[0, 0, 0],
+                     [0, 1, 1],
+                     [0, 1, 0],
+                     [0, 0, 1],
+                     [1, 0, 0],
+                     [1, 1, 1],
+                     [1, 1, 0],
+                     [1, 0, 1]])
+    # Load all of the words into rasterized tensors and cat them
+    # together.
+    data = [load_words_as_tensor(font_path = font, size = size)
+            for font in ttf]
+    combined_data = torch.cat(data)
+    # Expand each of the traits out by the size of one font's data set
+    # and cat them together. We can use data[0] because they should
+    # all be the same size.
+    word_count = data[0].shape[0]
+    one_hots = torch.cat([traits[i].repeat(word_count, 1)
+                          for i in range(traits.shape[0])])
+    # Returns a touple of the data and their one-hots
+    return combined_data, one_hots
 
 def flatten_words(words):
     "Flatten the words from 2D to 1D, flattening the tensor from 3D to 2D."
