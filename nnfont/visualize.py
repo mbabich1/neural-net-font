@@ -1,12 +1,11 @@
 import matplotlib.pyplot as plt
 import rasterize_font
 
-def plot_word(words, word_id):
+def plot_word(word, img_id):
     plt.style.use('_mpl-gallery-nogrid')
-    word = words[word_id]
     fig, ax = plt.subplots()
     ax.imshow(word, origin='upper')
-    plt.show()
+    plt.savefig(img_id)
 
 def main():
     # Test of flatten and unflatten. If the size is wrong (e.g. 64

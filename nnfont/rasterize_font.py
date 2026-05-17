@@ -182,7 +182,7 @@ def fill_array(array, data, face, size):
         create_one_line_text_data(text, face, size, array = array, i = i)
     return array
 
-def load_words_as_tensor(font_path = 'fonts/NotoSans-Regular.ttf', size = 8, n = None):
+def load_words_as_tensor(font_path = 'nnfont/fonts/NotoSans-Regular.ttf', size = 8, n = None):
     "Rasterizes all of the word data set with the given font and font size."
     # Reset the global cache dicts
     CACHE.clear()
@@ -206,6 +206,9 @@ def flatten_words(words):
 def unflatten_words(words, row_size):
     "Unflatten the words from 1D to 2D, unflattening the tensor from 2D to 3D."
     return torch.reshape(words, (words.shape[0], words.shape[1] // row_size, row_size))
+
+def unflatten_word(word, row_size):
+    return torch.reshape(word, (word.shape[0] // row_size, row_size))
 
 # Turns a glyph into an array that can be turned into a tensor for
 # pytorch... when not called directly, this serves as a model for how
