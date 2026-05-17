@@ -7,7 +7,8 @@ dependencies = [ "numpy",
                  "kagglehub",
                  "pandas",
                  "matplotlib",
-                 "freetype-py" ]
+                 "freetype-py",
+                 "xdg-base-dirs" ]
 
 [build-system]
 requires = ["setuptools"]
