@@ -182,7 +182,7 @@ def fill_array(array, data, face, size):
         create_one_line_text_data(text, face, size, array = array, i = i)
     return array
 
-def load_words_as_tensor(font_path = 'fonts/NotoSans-Regular.ttf', size = 8):
+def load_words_as_tensor(font_path = 'fonts/NotoSans-Regular.ttf', size = 8, n = None):
     "Rasterizes all of the word data set with the given font and font size."
     # Reset the global cache dicts
     CACHE.clear()
@@ -191,6 +191,8 @@ def load_words_as_tensor(font_path = 'fonts/NotoSans-Regular.ttf', size = 8):
     # Load the data
     face = load_face(font_path, size)
     words = process_words_dataset()['word']
+    if n is not None:
+        words = words[:n]
     # Create and populate the tensor array.
     array = torch.zeros(determine_array_size(words, face, size),
                         dtype=torch.uint8)
