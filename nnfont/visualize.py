@@ -6,6 +6,15 @@ def plot_word(words, word_id):
     word = words[word_id]
     fig, ax = plt.subplots()
     ax.imshow(word, origin='upper')
+
+def plot_multi_words(words, ids):
+    plt.style.use('_mpl-gallery-nogrid')
+    word = [words[id] for id in ids]
+    fig, ax = plt.subplots(len(ids), 1, layout='constrained')
+    for i in range(len(ids)):
+        ax[i].imshow(word[i], origin='upper')
+
+def show_word_plot():
     plt.show()
 
 def main():
@@ -14,9 +23,13 @@ def main():
     words, x_size = rasterize_font.flatten_words(rasterize_font.load_words_as_tensor(n = 2000))
     words = rasterize_font.unflatten_words(words, x_size)
     plot_word(words, 1234)
+    show_word_plot()
     # And now let's plot a larger size.
     words = rasterize_font.load_words_as_tensor(n = 2000, size=12)
     plot_word(words, 1234)
+    show_word_plot()
+    plot_multi_words(words, [1234, 1999, 333, 555])
+    show_word_plot()
 
 if __name__ == "__main__":
     main()
