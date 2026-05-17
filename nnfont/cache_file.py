@@ -27,7 +27,7 @@ def write_cache(data, filename):
 
 def read_cache(filename):
     "Reads data from a cache of the given filename."
-    return torch.load(get_cache_path(filename))
+    return torch.load(get_cache_path(filename), weights_only=False)
 
 def cache_exists(filename):
     "Checks to see if the cache file already exists."
