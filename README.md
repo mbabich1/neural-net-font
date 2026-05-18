@@ -22,7 +22,10 @@ We rasterize text with the `freetype-py` bindings to the FreeType
 library directly onto appropriately-sized Pytorch tensors. This
 approach is suitable for English words in the Latin alphabet, but
 other languages in other scripts may require an even higher level
-library.
+library. Generating our own font rasterizations allows us to turn a
+relatively modest amount of data (an English words list) into an
+arbitrarily large amount of synthetic data, which turns this project
+into a simple "big data" project.
 
 We visualize the text with `matplotlib` and use `kagglehub`, `pandas`,
 `numpy`, and `torch` to acquire and work with the data.
