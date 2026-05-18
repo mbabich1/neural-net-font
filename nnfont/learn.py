@@ -121,35 +121,33 @@ def train(
         fakes = None
         for batch_idx, (batch_images, batch_fonts) in enumerate(data_loader):
             current_batch_size = batch_images.size(0)
-            real_targets = torch.full((current_batch_size, 1), 0.9, device=DEVICE)
-            fake_targets = torch.zeros((current_batch_size, 1), device=DEVICE)
 
             # real images with discriminator
             real_images = batch_images.to(DEVICE)
             font_labels = batch_fonts.to(DEVICE)
+
+            real_targets = torch.full((current_batch_size, 1), 0.9, device=DEVICE)
+            fake_targets = torch.zeros((current_batch_size, 1), device=DEVICE)
+
+            dis_optim.zero_grad()
             outputs = discriminator(real_images, font_labels)
             dis_loss_real = BCELogitsLoss(outputs, real_targets)
 
             # fake images with generator
-            z = torch.randn(batch_size, latent_size).to(DEVICE)
+            z = torch.randn(batch_size, latent_size, device=DEVICE)
             fakes = generator(z, font_labels)
-            outputs = discriminator(fakes, font_labels)
+            outputs = discriminator(fakes.detach(), font_labels)
             dis_loss_fake = BCELogitsLoss(outputs, fake_targets)
 
             dis_loss = dis_loss_real + dis_loss_fake
-            gen_optim.zero_grad()
-            dis_optim.zero_grad()
             dis_loss.backward()
             dis_optim.step()
 
             # training of generator
-            z = torch.randn(batch_size, latent_size).to(DEVICE)
-            fakes = generator(z, font_labels)
+            gen_optim.zero_grad()
             outputs = discriminator(fakes, font_labels)
 
             gen_loss = BCELogitsLoss(outputs, torch.ones_like(real_targets)) # ones_like, because we want a distinct tensor
-            gen_optim.zero_grad()
-            dis_optim.zero_grad()
             gen_loss.backward()
             gen_optim.step()
 
