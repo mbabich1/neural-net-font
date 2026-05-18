@@ -2,7 +2,7 @@ import torch
 from torch import nn, tensor
 from rasterize_font import load_all_fonts, flatten_words, unflatten_word
 from cache_file import cache_after_first_run
-from visualize import plot_word
+from visualize import plot_word, plot_words_grid
 import random
 
 DEVICE = "cuda"
@@ -27,8 +27,8 @@ class Generator(nn.Module):
             nn.ConvTranspose2d(128, 64, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False),
             nn.BatchNorm2d(64),
             nn.ReLU(True),
-            # 8x32 -> 16x256
-            nn.ConvTranspose2d(64, 1, kernel_size=(4, 16), stride=(2, 4), padding=(1, 1), bias=False),
+            # 8x32 -> 16x128
+            nn.ConvTranspose2d(64, 1, kernel_size=(4, 6), stride=(2, 4), padding=(1, 1), bias=False),
             nn.Tanh()
         )
 
@@ -44,7 +44,7 @@ class Discriminator(nn.Module):
     def __init__(self, num_axes=3) -> None:
         super().__init__()
         self.main = nn.Sequential(
-            # 1 x 16 x 256
+            # 1 x 16 x 128
             nn.Conv2d(1 + num_axes, 64, kernel_size=(4, 6), stride=(2, 4), padding=(1, 1), bias=False),
             nn.LeakyReLU(0.2, inplace=True),
             # 64 x 8 x 32
@@ -96,6 +96,24 @@ def train(
     discriminator.train()
     gen_optim = torch.optim.Adam(generator.parameters())
     dis_optim = torch.optim.Adam(discriminator.parameters())
+
+    # stuff for per-epoch evaluation
+    style_permutations = [
+            [0, 0, 0],  # Sans, Regular, Upright
+            [0, 0, 1],  # Sans, Regular, Italic
+            [0, 1, 0],  # Sans, Bold,    Upright
+            [0, 1, 1],  # Sans, Bold,    Italic
+            [1, 0, 0],  # Serif, Regular, Upright
+            [1, 0, 1],  # Serif, Regular, Italic
+            [1, 1, 0],  # Serif, Bold,    Upright
+            [1, 1, 1],  # Serif, Bold,    Italic
+        ]
+
+    g = torch.Generator().manual_seed(42)
+    base_z = torch.randn(8, latent_size, generator=g)
+    eval_z = base_z.repeat(8, 1).to(DEVICE)
+
+    eval_attrs = torch.tensor([style for style in style_permutations for _ in range(8)], dtype=torch.float32).to(DEVICE)
 
     for epoch in range(num_epochs):
         tl_gen_loss = 0
@@ -154,6 +172,53 @@ def train(
         plot_word(fake_processed, img_id=f"out/fake_epoch_{epoch}.png") # generated
 
 
+        # call the generator to plot a word of each type
+        generator.eval()
+
+        with torch.no_grad():
+            eval_fakes = generator(eval_z, eval_attrs)
+
+        print(eval_fakes.shape)
+        unnormalized = (eval_fakes + 1) / 2.0
+        bytes = torch.clamp(unnormalized * 255, 0, 255).to(torch.uint8)
+
+        eval_words_np = bytes.squeeze(1).cpu().numpy()
+
+        plot_words_grid(
+            words=eval_words_np[0:8],
+            img_id=f"out/sans_normal_normal_{epoch}.png"
+        )
+        plot_words_grid(
+            words=eval_words_np[8:16],
+            img_id=f"out/sans_normal_italic_{epoch}.png"
+        )
+        plot_words_grid(
+            words=eval_words_np[16:24],
+            img_id=f"out/sans_bold_normal_{epoch}.png"
+        )
+        plot_words_grid(
+            words=eval_words_np[24:32],
+            img_id=f"out/sans_bold_italic_{epoch}.png"
+        )
+        plot_words_grid(
+            words=eval_words_np[32:40],
+            img_id=f"out/serif_normal_normal_{epoch}.png"
+        )
+        plot_words_grid(
+            words=eval_words_np[40:48],
+            img_id=f"out/serif_normal_italic_{epoch}.png"
+        )
+        plot_words_grid(
+            words=eval_words_np[48:56],
+            img_id=f"out/serif_bold_normal_{epoch}.png"
+        )
+        plot_words_grid(
+            words=eval_words_np[56:64],
+            img_id=f"out/serif_bold_italic_{epoch}.png"
+        )
+
+
+
 def normalize_tensor(tensor: torch.Tensor) -> torch.Tensor:
     min_val = tensor.min()
     max_val = tensor.max()
@@ -164,7 +229,7 @@ def normalize_tensor(tensor: torch.Tensor) -> torch.Tensor:
 
 
 def main():
-    words_tensor, one_hot_labels = cache_after_first_run(lambda : load_all_fonts(size=12), 'words12-128')
+    words_tensor, one_hot_labels = cache_after_first_run(lambda : load_all_fonts(size=12, m=0, n=150000), 'words12-128-1200k')
     if len(words_tensor.shape) == 3:
         words_tensor = words_tensor.unsqueeze(1)
     print(type(words_tensor), words_tensor.shape)

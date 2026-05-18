@@ -10,12 +10,24 @@ def plot_word(word, img_id):
     ax.imshow(word, origin='upper')
     plt.savefig(img_id)
 
-def plot_multi_words(words, ids):
+def plot_words_grid(words, img_id):
+    plt.style.use('_mpl-gallery-nogrid')
+    fig, ax = plt.subplots(len(words), 1)
+    for i in range(len(words)):
+        ax[i].imshow(words[i], origin='upper')
+
+    plt.savefig(img_id)
+    plt.close(fig)
+
+def plot_multi_words(words, ids, save_id):
     plt.style.use('_mpl-gallery-nogrid')
     word = [words[id] for id in ids]
     fig, ax = plt.subplots(len(ids), 1, layout='constrained')
     for i in range(len(ids)):
         ax[i].imshow(word[i], origin='upper')
+
+    plt.savefig(save_id)
+    plt.close(fig)
 
 def show_word_plot():
     plt.show()
