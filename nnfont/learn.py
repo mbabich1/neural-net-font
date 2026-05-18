@@ -108,13 +108,14 @@ def train(
 
             # real images with discriminator
             real_images = batch_images.to(DEVICE)
-            outputs = discriminator(real_images)
+            font_labels = batch_fonts.to(DEVICE)
+            outputs = discriminator(real_images, font_labels)
             dis_loss_real = BCELogitsLoss(outputs, real_targets)
 
             # fake images with generator
             z = torch.randn(batch_size, latent_size).to(DEVICE)
-            fakes = generator(z)
-            outputs = discriminator(fakes)
+            fakes = generator(z, font_labels)
+            outputs = discriminator(fakes, font_labels)
             dis_loss_fake = BCELogitsLoss(outputs, fake_targets)
 
             dis_loss = dis_loss_real + dis_loss_fake
@@ -125,8 +126,8 @@ def train(
 
             # training of generator
             z = torch.randn(batch_size, latent_size).to(DEVICE)
-            fakes = generator(z)
-            outputs = discriminator(fakes)
+            fakes = generator(z, font_labels)
+            outputs = discriminator(fakes, font_labels)
 
             gen_loss = BCELogitsLoss(outputs, torch.ones_like(real_targets)) # ones_like, because we want a distinct tensor
             gen_optim.zero_grad()
@@ -163,7 +164,7 @@ def normalize_tensor(tensor: torch.Tensor) -> torch.Tensor:
 
 
 def main():
-    words_tensor, one_hot_labels = cache_after_first_run(lambda : load_all_fonts(size=12), 'words12')
+    words_tensor, one_hot_labels = cache_after_first_run(lambda : load_all_fonts(size=12), 'words12-128')
     if len(words_tensor.shape) == 3:
         words_tensor = words_tensor.unsqueeze(1)
     print(type(words_tensor), words_tensor.shape)
