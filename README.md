@@ -1,9 +1,13 @@
 # Neural Net Font
 
+## Introduction
+
 This repository is a basic exploration into generating rasterized text
 based on open source font families. We are using Noto Sans and Noto
 Serif in regular, bold, italics, and bold-italics. This was made for
 one of the CMSC 678 group projects at UMBC in the Spring of 2026.
+
+## Design
 
 We rasterize text with the `freetype-py` bindings to the FreeType
 library directly onto appropriately-sized Pytorch tensors. This
@@ -13,6 +17,15 @@ library.
 
 We visualize the text with `matplotlib` and use `kagglehub`, `pandas`,
 `numpy`, and `torch` to acquire and work with the data.
+
+For the neural network, we used convoluted kernels on the data and
+then applied a simple generative adversarial network (GAN) design,
+which is based on having a generator network and a discriminator
+network. Memory and runtime constraints were the main limiting
+factors. Comparing different implementations of GANs, comparing the
+GAN's results to other approaches (such as diffusion), or running the
+GAN on much larger compute resources are all potential points of
+follow up.
 
 Initially, we considered using sentences, but words were sufficient
 for the scope of the project to show results. For words, we used a
@@ -26,6 +39,8 @@ variations, but as it would triple the size of the dataset, we chose
 to use 8 different fonts rather than to use permutations on one word
 in the same font. We also chose to keep everything at size 12 and
 rendered starting on the upper left corner of the image tensor.
+
+## Installation instructions
 
 To install this code so it can run, follow these instructions while
 inside the top level directory (where this README is located):
