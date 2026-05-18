@@ -17,15 +17,15 @@ class Generator(nn.Module):
             nn.ReLU(True),
             # 1x4 -> 2x8
             nn.ConvTranspose2d(512, 512, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False),
-            nn.BatchNorm2d(256),
+            nn.BatchNorm2d(512),
             nn.ReLU(True),
             # 2x8 -> 4x16
             nn.ConvTranspose2d(512, 256, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False),
-            nn.BatchNorm2d(128),
+            nn.BatchNorm2d(256),
             nn.ReLU(True),
             # 4x16 -> 8x32
             nn.ConvTranspose2d(256, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False),
-            nn.BatchNorm2d(64),
+            nn.BatchNorm2d(128),
             nn.ReLU(True),
             # 8x32 -> 16x128
             nn.ConvTranspose2d(128, 1, kernel_size=(4, 6), stride=(2, 4), padding=(1, 1), bias=False),
