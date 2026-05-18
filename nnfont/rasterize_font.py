@@ -12,10 +12,14 @@ import re
 
 import freetype
 import torch
+# Pytorch is too clever for Pylint here.
+# pylint:disable=no-name-in-module
 from torch import tensor
 
 from nnfont.data import process_words_dataset
 
+# Cache glyph info into global hash tables that are cleared every time
+# a new font is loaded. There are a ton of repetitive lookups!
 CACHE = {}
 GLYPH_TENSORS = {}
 KERNING_CACHE = {}
@@ -83,11 +87,9 @@ def determine_text_dimensions(text, face, size):
     # errors at the end of the text.
     return top, (top - bottom), width + 1
 
-# TODO: center the text?
 def render_text(data, text, face, top, i = None):
     "Draw each glyph of the text on top of an empty data tensor."
     x = 0
-    glyph = face.glyph
     previous_char = None
     # Walk through each character. Write the glyph data on top of the
     # empty data tensor.
@@ -114,6 +116,8 @@ def render_text(data, text, face, top, i = None):
         x += adv_x
         previous_char = char
 
+# Note: The matplotlib functions in visualize.py are probably going to
+# be better for debugging than seeing the raw tensor data.
 def print_font_data(data):
     "For debugging, prints all of the rendered text."
     for i in range(data.shape[0]):
@@ -137,38 +141,15 @@ def split_text(text):
         return (l1, r1)
     return (l2, r2)
 
-def create_one_line_text_data(text, face, size, array = None, i = None):
+def create_text_data(text, face, size, array = None, i = None):
     "Creates a tensor that fits one line of text."
     top, height, width = determine_text_dimensions(text, face, size)
-    if tensor is None:
+    if array is None:
         data = torch.zeros((height, width), dtype=torch.uint8)
     else:
         data = array
     render_text(data, text, face, top, i = i)
     return data
-
-# This is the main API function of this file right now.
-def create_multiline_text_data(text, face, size):
-    "Creates a tensor that fits the multiline text."
-    texts = split_text(text)
-    a = create_one_line_text_data(texts[0], face, size)
-    b = create_one_line_text_data(texts[1], face, size)
-    # The break between the line
-    y_offset = size // 6
-    data = torch.zeros((a.shape[0] + b.shape[0] + y_offset,
-                        max(a.shape[1], b.shape[1])),
-                       dtype=torch.uint8)
-    y_start = 0
-    data[y_start : y_start + a.shape[0], 0 : a.shape[1]] += a
-    y_start += a.shape[0] + y_offset
-    data[y_start : y_start + b.shape[0], 0 : b.shape[1]] += b
-    return data
-
-def create_text_data(text, face, size, array = None, i = None):
-    "Creates a tensor that fits the text, face, and size."
-    if len(text) >= 20 and re.search(r'(\s+)', text):
-        return create_multiline_text_data(text, face, size)
-    return create_one_line_text_data(text, face, size, array = array, i = i)
 
 def determine_array_size(data, face, size):
     "Do a first pass through the data to find how big to make the tensor."
@@ -186,7 +167,7 @@ def determine_array_size(data, face, size):
 def fill_array(array, data, face, size):
     "Fills the array with the rasterized data."
     for i, text in enumerate(data):
-        create_one_line_text_data(text, face, size, array = array, i = i)
+        create_text_data(text, face, size, array = array, i = i)
     return array
 
 def load_words_as_tensor(font_path = 'NotoSans-Regular.ttf',
@@ -268,17 +249,18 @@ def unflatten_words(words, row_size):
     return torch.reshape(words, (words.shape[0], words.shape[1] // row_size, row_size))
 
 def unflatten_word(word, row_size):
+    "Unflatten a word tensor from 1D to 2D."
     return torch.reshape(word, (word.shape[0] // row_size, row_size))
 
 # Turns a glyph into an array that can be turned into a tensor for
-# pytorch... when not called directly, this serves as a model for how
-# to use the API.
+# pytorch...
 def main():
     "Test print one of the items when called directly."
     data = load_words_as_tensor()
     # Print the middle word's array data
     print_font_data(data[data.shape[0] // 2])
-    print(flatten_words(data).shape)
+    print(data.shape)
+    print(flatten_words(data)[0].shape)
 
 if __name__ == "__main__":
     main()
