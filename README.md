@@ -2,6 +2,15 @@
 
 ## Introduction
 
+Our project seeks to investigate encoding text from rasterized fonts
+into neural networks for the purposes of generation and
+classification. To make this feasible in terms of computation space,
+computation speed, and the limited implementation time available, we
+make a number of simplifying assumptions to pursue the basic viability
+of the concept. This includes limiting the font family (Noto), the
+alphabet (Latin), the case (lower case), the language (English), and
+the text corpus (only words).
+
 This repository is a basic exploration into generating rasterized text
 based on open source font families. We are using Noto Sans and Noto
 Serif in regular, bold, italics, and bold-italics. This was made for
