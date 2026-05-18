@@ -215,10 +215,12 @@ def train(
             img_id=f"out/serif_bold_italic_{epoch}.png"
         )
 
-    torch.save({
-        "generator_state_dict": generator.state_dict(),
-        "discriminator_state_dict": discriminator.state_dict(),
-    }, "model_state_dicts.pt")
+        generator.train()
+
+        torch.save({
+            "generator_state_dict": generator.state_dict(),
+            "discriminator_state_dict": discriminator.state_dict(),
+        }, f"model_state_dicts_{epoch}.pt")
 
 
 
