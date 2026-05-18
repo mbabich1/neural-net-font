@@ -1,6 +1,6 @@
 import torch
 from torch import nn, tensor
-from rasterize_font import load_words_as_tensor, flatten_words, unflatten_word
+from rasterize_font import load_all_fonts, flatten_words, unflatten_word
 from cache_file import cache_after_first_run
 from visualize import plot_word
 import random
@@ -9,10 +9,10 @@ DEVICE = "cuda"
 
 
 class Generator(nn.Module):
-    def __init__(self, latent_size=100) -> None:
+    def __init__(self, latent_size=100, num_axes=3) -> None:
         super().__init__()
         self.main = nn.Sequential(
-            nn.ConvTranspose2d(latent_size, 512, kernel_size=(1, 4), stride=1, padding=0, bias=False),
+            nn.ConvTranspose2d(latent_size + num_axes, 512, kernel_size=(1, 4), stride=1, padding=0, bias=False),
             nn.BatchNorm2d(512),
             nn.ReLU(True),
             # 1x4 -> 2x8
@@ -28,21 +28,24 @@ class Generator(nn.Module):
             nn.BatchNorm2d(64),
             nn.ReLU(True),
             # 8x32 -> 16x256
-            nn.ConvTranspose2d(64, 1, kernel_size=(4, 10), stride=(2, 8), padding=(1, 1), bias=False),
+            nn.ConvTranspose2d(64, 1, kernel_size=(4, 16), stride=(2, 4), padding=(1, 1), bias=False),
             nn.Tanh()
         )
 
-    def forward(self, X):
-        X = X.view(X.size(0), X.size(1), 1, 1)
-        return self.main(X)
+    def forward(self, z, attributes):
+        z = z.view(z.size(0), z.size(1), 1, 1)
+        attributes = attributes.view(attributes.size(0), attributes.size(1), 1, 1)
+
+        input = torch.cat([z, attributes], dim=1)
+        return self.main(input)
 
 
 class Discriminator(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, num_axes=3) -> None:
         super().__init__()
         self.main = nn.Sequential(
             # 1 x 16 x 256
-            nn.Conv2d(1, 64, kernel_size=(4, 10), stride=(2, 8), padding=(1, 1), bias=False),
+            nn.Conv2d(1 + num_axes, 64, kernel_size=(4, 6), stride=(2, 4), padding=(1, 1), bias=False),
             nn.LeakyReLU(0.2, inplace=True),
             # 64 x 8 x 32
             nn.Conv2d(64, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False),
@@ -60,13 +63,15 @@ class Discriminator(nn.Module):
             nn.Conv2d(512, 1, kernel_size=(1, 4), stride=1, padding=0, bias=False)
         )
 
-    def forward(self, X):
-        if len(X.shape) == 3:
-            X = X.unsqueeze(1)
-        elif len(X.shape) == 2:
-            X = X.view(-1, 1, 16, 256)
-        
-        return self.main(X).view(-1, 1)
+    def forward(self, img: torch.Tensor, attributes: torch.Tensor):
+        if len(img.shape) == 3:
+            img = img.unsqueeze(1)
+
+        channels = attributes.view(attributes.size(0), attributes.size(1), 1, 1)
+        channels = channels.expand(-1, -1, 16, 128)
+
+        img_with_attributes = torch.cat([img, channels], dim=1)
+        return self.main(img_with_attributes).view(-1, 1)
     
 
 def prep_smp(smp_tensor: torch.Tensor) -> torch.Tensor:
@@ -96,7 +101,7 @@ def train(
         tl_gen_loss = 0
         tl_dis_loss = 0
         fakes = None
-        for batch_idx, (batch_images,) in enumerate(data_loader):
+        for batch_idx, (batch_images, batch_fonts) in enumerate(data_loader):
             current_batch_size = batch_images.size(0)
             real_targets = torch.full((current_batch_size, 1), 0.9, device=DEVICE)
             fake_targets = torch.zeros((current_batch_size, 1), device=DEVICE)
@@ -158,10 +163,13 @@ def normalize_tensor(tensor: torch.Tensor) -> torch.Tensor:
 
 
 def main():
-    words_tensor = cache_after_first_run(lambda : load_words_as_tensor(size=12), 'words12')
+    words_tensor, one_hot_labels = cache_after_first_run(lambda : load_all_fonts(size=12), 'words12')
     if len(words_tensor.shape) == 3:
         words_tensor = words_tensor.unsqueeze(1)
     print(type(words_tensor), words_tensor.shape)
+    print(one_hot_labels.shape)
+
+
     # words_tensor, len = flatten_words(words_tensor) # only for non-convolutional
     # print(type(words_tensor), words_tensor.shape)
     print(words_tensor[0])
@@ -170,14 +178,15 @@ def main():
     words_tensor = normalize_tensor(words_tensor)
 
     dataset = torch.utils.data.TensorDataset(
-        words_tensor
-    )  # TODO: concat labels when doing label-based
+        words_tensor,
+        one_hot_labels
+    )
 
     generator = Generator(100).to(DEVICE)  # a small starting size
     discriminator = Discriminator().to(DEVICE)
 
     data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=128, shuffle=True, drop_last=True
+        dataset, batch_size=128, shuffle=True, drop_last=True, num_workers=4, pin_memory=True
     )
 
     train(generator, discriminator, data_loader)
