@@ -101,9 +101,15 @@ def render_text(data, text, face, top, i = None):
             x += abs(left)
         # Write over the data from the (x + left, y) corner to the
         # (x + left + width, y + height) corner with the glyph tensor.
+        # Return early if it goes over the max width size instead of
+        # drawing the final glyph.
         if i is None:
+            if (x + left + width) > data.shape[1]:
+                return
             data[y : y + height, x + left : x + left + width] += glyph_tensor
         else:
+            if (x + left + width) > data.shape[2]:
+                return
             data[i, y : y + height, x + left : x + left + width] += glyph_tensor
         x += adv_x
         previous_char = char
@@ -183,7 +189,10 @@ def fill_array(array, data, face, size):
         create_one_line_text_data(text, face, size, array = array, i = i)
     return array
 
-def load_words_as_tensor(font_path = 'NotoSans-Regular.ttf', size = 12, n = None):
+def load_words_as_tensor(font_path = 'NotoSans-Regular.ttf',
+                         size = 12,
+                         n = None,
+                         max_length = 128):
     "Rasterizes all of the word data set with the given font and font size."
     # Reset the global cache dicts
     CACHE.clear()
@@ -196,12 +205,14 @@ def load_words_as_tensor(font_path = 'NotoSans-Regular.ttf', size = 12, n = None
     if n is not None:
         words = words[:n]
     # Create and populate the tensor array.
-    array = torch.zeros(determine_array_size(words, face, size),
-                        dtype=torch.uint8)
+    z, y, x = determine_array_size(words, face, size)
+    if max_length:
+        x = min(max_length, x)
+    array = torch.zeros((z, y, x), dtype=torch.uint8)
     fill_array(array, words, face, size)
     return array
 
-def load_all_fonts(size = 12, trim_length = 128):
+def load_all_fonts(size = 12, max_length = 128):
     "Loads and rasterizes all fonts."
     # All font paths, as files in 'fonts/'
     ttf = ['NotoSans-Regular.ttf',
@@ -223,11 +234,11 @@ def load_all_fonts(size = 12, trim_length = 128):
                      [1, 0, 1]])
     # Load all of the words into rasterized tensors and cat them
     # together.
-    data = [load_words_as_tensor(font_path = font, size = size)
+    data = [load_words_as_tensor(font_path = font,
+                                 size = size,
+                                 max_length = max_length)
             for font in ttf]
     combined_data = torch.cat(data)
-    if trim_length:
-        combined_data = torch.narrow(combined_data, 2, 0, trim_length)
     # Expand each of the traits out by the size of one font's data set
     # and cat them together. We can use data[0] because they should
     # all be the same size.
