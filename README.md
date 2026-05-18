@@ -26,8 +26,9 @@ approach. Comparing different implementations of GANs, comparing the
 GAN's results to other approaches (such as diffusion), or running the
 GAN on much larger compute resources are all potential points of
 follow up. Additionally, with more compute resources, other metadata
-could be provided other than just the font, such as encoded tokens of
-the word or perhaps training on tokens instead of on words.
+could be provided other than just the font, such as tagging the words
+with the encoded tokens of the word or perhaps training on tokens
+instead of on words while preserving every token label.
 
 Initially, we considered using sentences, but words were sufficient
 for the scope of the project to show results in our limited memory and
