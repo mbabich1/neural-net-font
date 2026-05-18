@@ -227,7 +227,7 @@ def normalize_tensor(tensor: torch.Tensor) -> torch.Tensor:
 
 
 def main():
-    words_tensor, one_hot_labels = cache_after_first_run(lambda : load_all_fonts(size=12, m=0, n=150000), 'words12-128-1200k')
+    words_tensor, one_hot_labels = cache_after_first_run(lambda : load_all_fonts(size=12), 'words12-128-1200k')
     if len(words_tensor.shape) == 3:
         words_tensor = words_tensor.unsqueeze(1)
     print(type(words_tensor), words_tensor.shape)
