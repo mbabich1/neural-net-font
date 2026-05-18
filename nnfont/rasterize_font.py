@@ -191,6 +191,7 @@ def fill_array(array, data, face, size):
 
 def load_words_as_tensor(font_path = 'NotoSans-Regular.ttf',
                          size = 12,
+                         m = None,
                          n = None,
                          max_length = 128):
     "Rasterizes all of the word data set with the given font and font size."
@@ -203,7 +204,12 @@ def load_words_as_tensor(font_path = 'NotoSans-Regular.ttf',
     face = load_face(full_path, size)
     words = process_words_dataset()['word']
     if n is not None:
-        words = words[:n]
+        if m is not None:
+            words = words[m:n]
+        else:
+            words = words[:n]
+    elif m is not None:
+        words = words[m:]
     # Create and populate the tensor array.
     z, y, x = determine_array_size(words, face, size)
     if max_length:
@@ -212,7 +218,10 @@ def load_words_as_tensor(font_path = 'NotoSans-Regular.ttf',
     fill_array(array, words, face, size)
     return array
 
-def load_all_fonts(size = 12, max_length = 128):
+def load_all_fonts(size = 12,
+                   max_length = 128,
+                   m = None,
+                   n = None):
     "Loads and rasterizes all fonts."
     # All font paths, as files in 'fonts/'
     ttf = ['NotoSans-Regular.ttf',
@@ -236,7 +245,9 @@ def load_all_fonts(size = 12, max_length = 128):
     # together.
     data = [load_words_as_tensor(font_path = font,
                                  size = size,
-                                 max_length = max_length)
+                                 max_length = max_length,
+                                 m = m,
+                                 n = n)
             for font in ttf]
     combined_data = torch.cat(data)
     # Expand each of the traits out by the size of one font's data set
