@@ -42,6 +42,9 @@ could be provided other than just the font, such as tagging the words
 with the encoded tokens of the word or perhaps training on tokens
 instead of on words while preserving every token label.
 
+![An example generated "word".](example_generation.png)
+*An example image.*
+
 Initially, we considered using sentences, but words were sufficient
 for the scope of the project to show results in our limited memory and
 compute budget. For words, we used a [370k English word corpus from
@@ -55,13 +58,19 @@ to use 8 different fonts rather than to use permutations on one word
 in the same font. We also chose to keep everything at size 12 and
 rendered starting on the upper left corner of the image tensor.
 
+This is explored in more detail in the writeup.
+
 ## Installation instructions
 
 To install this code so it can run, follow these instructions while
 inside the top level directory (where this README is located):
 
-1. Run `python -m venv .venv` to create a Python venv.
+1. Run `python3 -m venv .venv` to create a Python venv.
 2. Run `source .venv/bin/activate` to enter the venv.
 3. Run `pip install --editable .` to locally install all of the
    dependencies as specified in the `pyproject.toml`. Nvidia CUDA is
    strongly recommended to be used with Pytorch.
+
+## Running instructions
+
+Once inside of the venv, simply run `python3 nnfont/learn.py`
