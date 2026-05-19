@@ -5,6 +5,9 @@ from cache_file import cache_after_first_run
 from visualize import plot_word, plot_words_grid
 import random
 
+# Change this from "cuda" to run outside of cuda. Time constraints
+# mean that we didn't have time to make this into a command line
+# option.
 DEVICE = "cuda"
 
 
